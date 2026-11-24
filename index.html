@@ -1,0 +1,828 @@
+```html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新生活・引越し準備チェックリスト</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
+    /* カスタムスクロールバー */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-16">
+
+  <!-- ==================== ロック画面（パスワード保護） ==================== -->
+  <div id="lockOverlay" class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-md w-full text-center border border-slate-100">
+      <div class="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+      </div>
+      <h2 class="text-2xl font-bold text-slate-800 mb-2">家族専用エリア</h2>
+      <p class="text-sm text-slate-500 mb-6">閲覧するには合言葉（パスコード）を入力してください。</p>
+      
+      <form id="lockForm" onsubmit="handleUnlock(event)" class="space-y-4">
+        <div>
+          <input type="password" id="passInput" placeholder="合言葉を入力" autofocus
+            class="w-full px-4 py-3 border border-slate-300 rounded-xl text-center text-lg font-medium tracking-wider focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500">
+          <p id="lockError" class="text-xs text-rose-500 mt-2 hidden font-semibold">合言葉が違います</p>
+        </div>
+        <button type="submit" 
+          class="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-rose-200 transition duration-200">
+          ロック解除
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== メインコンテンツ ==================== -->
+  <div id="appContainer" class="hidden">
+    <!-- ヘッダー -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+      <div class="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center space-x-3">
+          <span class="text-2xl">📦</span>
+          <div>
+            <h1 class="text-lg sm:text-xl font-bold text-slate-900 leading-tight">引越し準備リスト</h1>
+            <div class="flex items-center space-x-2 text-xs text-slate-500 mt-0.5">
+              <span id="syncStatus" class="inline-flex items-center text-emerald-600 font-medium">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                ローカル保存中
+              </span>
+              <span>•</span>
+              <span>部屋: <strong id="roomDisplay" class="text-slate-700">natsumi-kazoku</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ヘッダー操作ボタン群 -->
+        <div class="flex items-center space-x-2">
+          <button onclick="copyShareLink()" class="inline-flex items-center space-x-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684"/>
+            </svg>
+            <span>共有URL</span>
+          </button>
+          
+          <button onclick="openManageModal()" class="inline-flex items-center space-x-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium rounded-lg transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span class="hidden sm:inline">設定・管理</span>
+          </button>
+
+          <button onclick="lockApp()" class="inline-flex items-center space-x-1 px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs sm:text-sm font-medium rounded-lg transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+            <span>ロック</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+      <!-- 進捗ダッシュボード & スケジュール -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- 進捗カード -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">全体準備進捗</h2>
+            <div class="flex items-baseline space-x-2">
+              <span id="progressPercent" class="text-4xl font-extrabold text-rose-500">0%</span>
+              <span id="progressRatio" class="text-sm font-medium text-slate-500">0 / 0 完了</span>
+            </div>
+            <!-- プログレスバー -->
+            <div class="w-full bg-slate-100 rounded-full h-3 mt-3 overflow-hidden">
+              <div id="progressBar" class="bg-rose-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span class="text-slate-400 block">合計見込額</span>
+              <span id="totalCost" class="font-bold text-slate-700 text-sm">¥0</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block">購入・支払済</span>
+              <span id="purchasedCost" class="font-bold text-emerald-600 text-sm">¥0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- スケジュールメモ -->
+        <div class="lg:col-span-2 bg-gradient-to-br from-amber-50 to-orange-50 p-5 rounded-2xl border border-amber-200 shadow-sm relative">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-bold text-amber-900 flex items-center space-x-1.5">
+              <span>📅</span>
+              <span>重要スケジュール・タスクメモ</span>
+            </h2>
+            <button onclick="addSchedule()" class="text-xs bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-md font-medium transition">
+              + 予定追加
+            </button>
+          </div>
+
+          <div id="scheduleList" class="space-y-2 mb-3">
+            <!-- スケジュール項目が動的に入る -->
+          </div>
+
+          <!-- フリー住所メモ -->
+          <div class="mt-2">
+            <textarea id="memoText" oninput="saveMemo(this.value)" placeholder="引越し先の住所や採寸メモ、手続きメモなど自由に記入..."
+              class="w-full text-xs p-2.5 bg-white/80 border border-amber-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none h-16"></textarea>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- フィルター＆検索・追加バー -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        
+        <!-- アイテム追加フォーム -->
+        <form onsubmit="handleAddItem(event)" class="flex flex-wrap sm:flex-nowrap gap-2">
+          <input type="text" id="newItemTitle" placeholder="新しいアイテム名を入力..." required
+            class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+          
+          <select id="newItemGenre" class="px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-rose-500">
+            <!-- 動的ジャンル -->
+          </select>
+
+          <select id="newItemLocation" class="px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-rose-500">
+            <!-- 動的保管場所 -->
+          </select>
+
+          <button type="submit" class="w-full sm:w-auto px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm rounded-xl shadow-sm transition">
+            追加
+          </button>
+        </form>
+
+        <!-- フィルター群 -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+          
+          <!-- ジャンルタブ -->
+          <div id="genreTabs" class="flex items-center space-x-1 overflow-x-auto pb-1 max-w-full text-xs font-medium">
+            <!-- 動的生成 -->
+          </div>
+
+          <!-- 検索 & 状態フィルター -->
+          <div class="flex items-center space-x-2 w-full sm:w-auto">
+            <input type="text" id="searchInput" oninput="renderItems()" placeholder="検索..." 
+              class="w-full sm:w-36 px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500">
+
+            <select id="statusFilter" onchange="renderItems()" class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white">
+              <option value="all">すべて表示</option>
+              <option value="unchecked">未完了のみ</option>
+              <option value="checked">完了済みのみ</option>
+            </select>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- メインリスト表示部 -->
+      <div id="itemList" class="space-y-3">
+        <!-- JSでアイテム群がレンダリングされる -->
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ==================== 設定・管理モーダル ==================== -->
+  <div id="manageModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-bold text-slate-800">ジャンル・保管場所の設定</h3>
+        <button onclick="closeManageModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <!-- ジャンル管理 -->
+      <div>
+        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ジャンル一覧（編集・削除）</h4>
+        <div id="genreManageList" class="space-y-2 mb-3"></div>
+        <form onsubmit="handleAddGenre(event)" class="flex gap-2">
+          <input type="text" id="newGenreInput" placeholder="新しいジャンル名" required class="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-lg">
+          <button type="submit" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg">追加</button>
+        </form>
+      </div>
+
+      <!-- 保管場所管理 -->
+      <div class="border-t border-slate-100 pt-4">
+        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">保管場所一覧（編集・削除）</h4>
+        <div id="locationManageList" class="space-y-2 mb-3"></div>
+        <form onsubmit="handleAddLocation(event)" class="flex gap-2">
+          <input type="text" id="newLocationInput" placeholder="新しい保管場所名" required class="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-lg">
+          <button type="submit" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg">追加</button>
+        </form>
+      </div>
+
+      <div class="text-right border-t border-slate-100 pt-3">
+        <button onclick="closeManageModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- カスタム通知トースト -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none z-50">
+    メッセージ
+  </div>
+
+  <!-- ==================== ロジックスクリプト ==================== -->
+  <script>
+    // --- 定数・初期設定 ---
+    const PASSCODE = "nyanhikkoshi";
+    const AUTH_KEY = "hikkoshi_app_authenticated";
+    const STORAGE_KEY = "hikkoshi_checklist_data_v2";
+
+    // URLのパラメータからルームIDを取得（デフォルト: natsumi-kazoku）
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room') || 'natsumi-kazoku';
+
+    // 初期データ構造
+    const defaultData = {
+      genres: ["電化製品", "家具", "食器・キッチン", "持っていくもの", "消耗品・日用品", "洗剤・掃除", "新社会人グッズ", "その他"],
+      locations: ["新居", "未購入・ネット注文", "実家", "友達の家", "大学", "未定"],
+      schedules: [
+        { id: 's1', text: '11/28か29 内見＆契約にいく（家、ガス・でんき）', done: false },
+        { id: 's2', text: '12月中旬（12か13か19か20）引越し', done: false },
+        { id: 's3', text: '11/3 買出し（100きん、IKEA、なんでも豊中、ゆうの買った場所、船場センタービル マグネット）', done: false }
+      ],
+      memo: "引越し先住所・連絡先メモなど",
+      items: [
+        // 電化製品
+        { id: '1', title: 'せんたくき', genre: '電化製品', location: '未購入・ネット注文', checked: true, price: 0, note: '', shop: '' },
+        { id: '2', title: 'レンジ', genre: '電化製品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '3', title: 'すいはんき', genre: '電化製品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '4', title: '(エアコン)', genre: '電化製品', location: '未定', checked: false, price: 0, note: '', shop: '' },
+        { id: '5', title: 'ドライヤー', genre: '電化製品', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '6', title: 'れいぞうこ', genre: '電化製品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '7', title: 'IHかコンロ', genre: '電化製品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '8', title: 'アイロン', genre: '電化製品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '9', title: '延長コード', genre: '電化製品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+
+        // 家具
+        { id: '10', title: '本だな', genre: '家具', location: '未購入・ネット注文', checked: false, price: 0, note: 'らくてん', shop: '楽天' },
+        { id: '11', title: '服かけるやつ', genre: '家具', location: '未購入・ネット注文', checked: false, price: 0, note: 'らくてん', shop: '楽天' },
+        { id: '12', title: '全身鏡', genre: '家具', location: '未購入・ネット注文', checked: false, price: 0, note: 'IKEA', shop: 'IKEA' },
+        { id: '13', title: 'ベッド', genre: '家具', location: '未購入・ネット注文', checked: false, price: 0, note: 'らくてん', shop: '楽天' },
+        { id: '14', title: '机', genre: '家具', location: '未定', checked: false, price: 0, note: '', shop: '' },
+        { id: '15', title: 'いす', genre: '家具', location: '未定', checked: false, price: 0, note: '', shop: '' },
+        { id: '16', title: 'カーテン', genre: '家具', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '17', title: '(一物干しざお)(せんたくばさみ)', genre: '家具', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '18', title: '(食器だな？)', genre: '家具', location: '未定', checked: false, price: 0, note: '', shop: '' },
+        { id: '19', title: 'とけい', genre: '家具', location: '未購入・ネット注文', checked: false, price: 0, note: 'SHEIN', shop: 'SHEIN' },
+        { id: '20', title: 'せんたくネット たくさん', genre: '家具', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '21', title: '自転車', genre: '家具', location: '実家', checked: false, price: 0, note: '', shop: '' },
+
+        // 食器・キッチン
+        { id: '22', title: '皿', genre: '食器・キッチン', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '23', title: 'セットになってるやつ(おはし、すぷーん、ふぉーく)', genre: '食器・キッチン', location: '未購入・ネット注文', checked: false, price: 0, note: 'フランフラン', shop: 'Francfranc' },
+        { id: '24', title: '包丁', genre: '食器・キッチン', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '25', title: 'まな板', genre: '食器・キッチン', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '26', title: 'フライパン類', genre: '食器・キッチン', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '27', title: 'おべんとう箱', genre: '食器・キッチン', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '28', title: '包丁ばさみ', genre: '食器・キッチン', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '29', title: '調味料', genre: '食器・キッチン', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '30', title: '計量みそカップ・ふつうの計量カップなど', genre: '食器・キッチン', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '31', title: 'タッパー', genre: '食器・キッチン', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '32', title: 'ガラス(はかり)', genre: '食器・キッチン', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+
+        // 持っていくもの
+        { id: '33', title: 'こいのしょうゆいれ', genre: '持っていくもの', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '34', title: 'ビニールぶくろ', genre: '持っていくもの', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '35', title: 'ワッフルメーカー', genre: '持っていくもの', location: '実家', checked: false, price: 0, note: '', shop: '' },
+
+        // 消耗品・日用品
+        { id: '36', title: 'ラップ', genre: '消耗品・日用品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '37', title: 'ごみ袋', genre: '消耗品・日用品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '38', title: 'アルミホイル', genre: '消耗品・日用品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '39', title: 'ジップロック', genre: '消耗品・日用品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '40', title: 'キッチンペーパー', genre: '消耗品・日用品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '41', title: 'トイレットペーパー', genre: '消耗品・日用品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '42', title: 'ハンカチ', genre: '消耗品・日用品', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '43', title: 'ティッシュ', genre: '消耗品・日用品', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+
+        // 洗剤・掃除
+        { id: '44', title: '洗剤', genre: '洗剤・掃除', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '45', title: '食器洗い洗剤', genre: '洗剤・掃除', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '46', title: '石けん', genre: '洗剤・掃除', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '47', title: 'シャンプー', genre: '洗剤・掃除', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '48', title: 'リンス', genre: '洗剤・掃除', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '49', title: 'おふろそうじ具', genre: '洗剤・掃除', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '50', title: 'トイレそうじ用具', genre: '洗剤・掃除', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+
+        // 新社会人グッズ
+        { id: '51', title: 'かみごむ', genre: '新社会人グッズ', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '52', title: 'パンスト', genre: '新社会人グッズ', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '53', title: 'スーツに合うくつ下', genre: '新社会人グッズ', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '54', title: 'すけない肌着', genre: '新社会人グッズ', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '55', title: 'ブラウス', genre: '新社会人グッズ', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '56', title: 'スーツ', genre: '新社会人グッズ', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '57', title: 'パンプス', genre: '新社会人グッズ', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '58', title: 'スニーカー(シンプル)', genre: '新社会人グッズ', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '59', title: 'バッグ(A4入るもの)', genre: '新社会人グッズ', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '60', title: 'クリアケース', genre: '新社会人グッズ', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+
+        // その他
+        { id: '61', title: 'タオル', genre: 'その他', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '62', title: 'はみがき(とんぼ)', genre: 'その他', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '63', title: 'はさみ', genre: 'その他', location: '実家', checked: false, price: 0, note: '', shop: '' },
+        { id: '64', title: 'ゴミ箱', genre: 'その他', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' },
+        { id: '65', title: 'スリッパ', genre: 'その他', location: '未購入・ネット注文', checked: false, price: 0, note: '', shop: '' }
+      ]
+    };
+
+    // アプリの状態
+    let state = {
+      data: JSON.parse(JSON.stringify(defaultData)),
+      activeGenre: "すべて",
+      roomId: roomId
+    };
+
+    // --- 初期化 ---
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuthStatus();
+      loadLocalData();
+      document.getElementById('roomDisplay').textContent = state.roomId;
+    });
+
+    // --- 認証・ロック機能 ---
+    function checkAuthStatus() {
+      const isAuth = localStorage.getItem(AUTH_KEY);
+      const lockOverlay = document.getElementById('lockOverlay');
+      const appContainer = document.getElementById('appContainer');
+
+      if (isAuth === "true") {
+        lockOverlay.classList.add('hidden');
+        appContainer.classList.remove('hidden');
+        renderAll();
+      } else {
+        lockOverlay.classList.remove('hidden');
+        appContainer.classList.add('hidden');
+      }
+    }
+
+    function handleUnlock(e) {
+      e.preventDefault();
+      const input = document.getElementById('passInput').value;
+      const errorMsg = document.getElementById('lockError');
+
+      if (input === PASSCODE) {
+        localStorage.setItem(AUTH_KEY, "true");
+        errorMsg.classList.add('hidden');
+        checkAuthStatus();
+        showToast("ロックを解除しました");
+      } else {
+        errorMsg.classList.remove('hidden');
+      }
+    }
+
+    function lockApp() {
+      localStorage.removeItem(AUTH_KEY);
+      checkAuthStatus();
+      document.getElementById('passInput').value = "";
+      showToast("ロックしました");
+    }
+
+    // --- データ保存 & 読み込み ---
+    function loadLocalData() {
+      const saved = localStorage.getItem(STORAGE_KEY + "_" + state.roomId);
+      if (saved) {
+        try {
+          state.data = JSON.parse(saved);
+        } catch(e) {
+          console.error("Local load failed", e);
+        }
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY + "_" + state.roomId, JSON.stringify(state.data));
+      renderDashboard();
+    }
+
+    // --- レンダリング系 ---
+    function renderAll() {
+      renderGenreTabs();
+      renderSelectOptions();
+      renderItems();
+      renderDashboard();
+      renderSchedules();
+      document.getElementById('memoText').value = state.data.memo || "";
+    }
+
+    // ダッシュボード
+    function renderDashboard() {
+      const items = state.data.items;
+      const total = items.length;
+      const checked = items.filter(i => i.checked).length;
+      const percent = total > 0 ? Math.round((checked / total) * 100) : 0;
+
+      document.getElementById('progressPercent').textContent = `${percent}%`;
+      document.getElementById('progressRatio').textContent = `${checked} / ${total} 完了`;
+      document.getElementById('progressBar').style.width = `${percent}%`;
+
+      const totalCost = items.reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+      const purchasedCost = items.filter(i => i.checked).reduce((sum, i) => sum + (Number(i.price) || 0), 0);
+
+      document.getElementById('totalCost').textContent = `¥${totalCost.toLocaleString()}`;
+      document.getElementById('purchasedCost').textContent = `¥${purchasedCost.toLocaleString()}`;
+    }
+
+    // スケジュール
+    function renderSchedules() {
+      const container = document.getElementById('scheduleList');
+      container.innerHTML = "";
+
+      state.data.schedules.forEach((sch) => {
+        const div = document.createElement('div');
+        div.className = "flex items-center justify-between bg-white/90 px-3 py-2 rounded-xl border border-amber-200/70 text-xs";
+        div.innerHTML = `
+          <label class="flex items-center space-x-2 flex-1 cursor-pointer mr-2">
+            <input type="checkbox" ${sch.done ? 'checked' : ''} onchange="toggleSchedule('${sch.id}')" 
+              class="w-4 h-4 text-amber-500 rounded focus:ring-amber-400">
+            <span class="${sch.done ? 'line-through text-slate-400' : 'text-amber-950 font-medium'}">${escapeHtml(sch.text)}</span>
+          </label>
+          <button onclick="deleteSchedule('${sch.id}')" class="text-slate-300 hover:text-rose-500 font-bold px-1">&times;</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function toggleSchedule(id) {
+      const sch = state.data.schedules.find(s => s.id === id);
+      if (sch) {
+        sch.done = !sch.done;
+        saveData();
+        renderSchedules();
+      }
+    }
+
+    function addSchedule() {
+      const text = prompt("新しい予定を入力してください:");
+      if (text && text.trim()) {
+        state.data.schedules.push({
+          id: 's_' + Date.now(),
+          text: text.trim(),
+          done: false
+        });
+        saveData();
+        renderSchedules();
+      }
+    }
+
+    function deleteSchedule(id) {
+      state.data.schedules = state.data.schedules.filter(s => s.id !== id);
+      saveData();
+      renderSchedules();
+    }
+
+    function saveMemo(text) {
+      state.data.memo = text;
+      saveData();
+    }
+
+    // ジャンルタブ
+    function renderGenreTabs() {
+      const container = document.getElementById('genreTabs');
+      container.innerHTML = "";
+
+      const genres = ["すべて", ...state.data.genres];
+      genres.forEach(g => {
+        const btn = document.createElement('button');
+        const isActive = state.activeGenre === g;
+        btn.className = `px-3 py-1.5 rounded-lg whitespace-nowrap transition ${
+          isActive 
+            ? 'bg-rose-500 text-white font-bold shadow-sm' 
+            : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+        }`;
+        btn.textContent = g;
+        btn.onclick = () => {
+          state.activeGenre = g;
+          renderGenreTabs();
+          renderItems();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    // セレクトボックスの選択肢更新
+    function renderSelectOptions() {
+      const genreSelect = document.getElementById('newItemGenre');
+      const locationSelect = document.getElementById('newItemLocation');
+
+      genreSelect.innerHTML = state.data.genres.map(g => `<option value="${g}">${g}</option>`).join('');
+      locationSelect.innerHTML = state.data.locations.map(l => `<option value="${l}">${l}</option>`).join('');
+    }
+
+    // リスト描画
+    function renderItems() {
+      const container = document.getElementById('itemList');
+      container.innerHTML = "";
+
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const status = document.getElementById('statusFilter').value;
+
+      let filtered = state.data.items.filter(item => {
+        // ジャンルフィルター
+        if (state.activeGenre !== "すべて" && item.genre !== state.activeGenre) return false;
+        // 完了状態フィルター
+        if (status === "checked" && !item.checked) return false;
+        if (status === "unchecked" && item.checked) return false;
+        // 検索フィルター
+        if (search) {
+          const matchTitle = item.title.toLowerCase().includes(search);
+          const matchNote = (item.note || "").toLowerCase().includes(search);
+          const matchShop = (item.shop || "").toLowerCase().includes(search);
+          if (!matchTitle && !matchNote && !matchShop) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300">
+            <p class="text-slate-400 text-sm">該当するアイテムが見つかりません</p>
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = `bg-white p-3.5 sm:p-4 rounded-2xl border transition shadow-sm ${
+          item.checked ? 'border-slate-200 bg-slate-50/60 opacity-80' : 'border-slate-200 hover:border-slate-300'
+        }`;
+
+        const locationOptions = state.data.locations.map(l => 
+          `<option value="${l}" ${item.location === l ? 'selected' : ''}>${l}</option>`
+        ).join('');
+
+        const genreOptions = state.data.genres.map(g => 
+          `<option value="${g}" ${item.genre === g ? 'selected' : ''}>${g}</option>`
+        ).join('');
+
+        card.innerHTML = `
+          <div class="flex items-start space-x-3">
+            <!-- チェックボックス -->
+            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItemCheck('${item.id}')"
+              class="mt-1 w-5 h-5 text-rose-500 rounded focus:ring-rose-400 cursor-pointer">
+
+            <div class="flex-1 min-w-0 space-y-2">
+              
+              <!-- タイトル & 基本属性 -->
+              <div class="flex flex-wrap items-center gap-2">
+                <input type="text" value="${escapeHtml(item.title)}" onchange="updateItemField('${item.id}', 'title', this.value)"
+                  class="font-semibold text-sm sm:text-base text-slate-800 bg-transparent focus:bg-white focus:outline-none focus:ring-1 focus:ring-rose-400 rounded px-1 -ml-1 flex-1 min-w-[150px] ${
+                    item.checked ? 'line-through text-slate-400' : ''
+                  }">
+
+                <!-- バッジ（ジャンル & 保管場所） -->
+                <div class="flex items-center space-x-1 text-xs">
+                  <select onchange="updateItemField('${item.id}', 'genre', this.value)" 
+                    class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-2 py-0.5 rounded-md border-0 focus:ring-1 focus:ring-rose-400">
+                    ${genreOptions}
+                  </select>
+
+                  <select onchange="updateItemField('${item.id}', 'location', this.value)"
+                    class="bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium px-2 py-0.5 rounded-md border-0 focus:ring-1 focus:ring-rose-400">
+                    ${locationOptions}
+                  </select>
+                </div>
+              </div>
+
+              <!-- 詳細属性（購入場所・価格・メモ） -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-500 pt-1">
+                <div class="flex items-center space-x-1">
+                  <span class="text-slate-400">店:</span>
+                  <input type="text" value="${escapeHtml(item.shop || '')}" placeholder="購入店・サイト" onchange="updateItemField('${item.id}', 'shop', this.value)"
+                    class="w-full bg-slate-50 focus:bg-white px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-rose-400">
+                </div>
+
+                <div class="flex items-center space-x-1">
+                  <span class="text-slate-400">¥:</span>
+                  <input type="number" value="${item.price || ''}" placeholder="金額" onchange="updateItemField('${item.id}', 'price', Number(this.value))"
+                    class="w-full bg-slate-50 focus:bg-white px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-rose-400">
+                </div>
+
+                <div class="flex items-center space-x-1">
+                  <span class="text-slate-400">メモ:</span>
+                  <input type="text" value="${escapeHtml(item.note || '')}" placeholder="サイズ・補足" onchange="updateItemField('${item.id}', 'note', this.value)"
+                    class="w-full bg-slate-50 focus:bg-white px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-rose-400">
+                </div>
+              </div>
+
+            </div>
+
+            <!-- 削除ボタン -->
+            <button onclick="deleteItem('${item.id}')" class="text-slate-300 hover:text-rose-500 p-1 font-bold text-lg">
+              &times;
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // --- アイテム操作 ---
+    function toggleItemCheck(id) {
+      const item = state.data.items.find(i => i.id === id);
+      if (item) {
+        item.checked = !item.checked;
+        saveData();
+        renderItems();
+      }
+    }
+
+    function updateItemField(id, field, value) {
+      const item = state.data.items.find(i => i.id === id);
+      if (item) {
+        item[field] = value;
+        saveData();
+        if (field === 'price') renderDashboard();
+      }
+    }
+
+    function handleAddItem(e) {
+      e.preventDefault();
+      const titleInput = document.getElementById('newItemTitle');
+      const genreSelect = document.getElementById('newItemGenre');
+      const locationSelect = document.getElementById('newItemLocation');
+
+      const title = titleInput.value.trim();
+      if (!title) return;
+
+      const newItem = {
+        id: 'item_' + Date.now(),
+        title: title,
+        genre: genreSelect.value,
+        location: locationSelect.value,
+        checked: false,
+        price: 0,
+        note: '',
+        shop: ''
+      };
+
+      state.data.items.unshift(newItem);
+      saveData();
+      renderAll();
+      titleInput.value = "";
+      showToast("アイテムを追加しました");
+    }
+
+    function deleteItem(id) {
+      if (confirm("このアイテムを削除しますか？")) {
+        state.data.items = state.data.items.filter(i => i.id !== id);
+        saveData();
+        renderAll();
+        showToast("削除しました");
+      }
+    }
+
+    // --- ジャンル・保管場所モーダル管理 ---
+    function openManageModal() {
+      renderManageLists();
+      document.getElementById('manageModal').classList.remove('hidden');
+    }
+
+    function closeManageModal() {
+      document.getElementById('manageModal').classList.add('hidden');
+      renderAll();
+    }
+
+    function renderManageLists() {
+      // ジャンル
+      const gContainer = document.getElementById('genreManageList');
+      gContainer.innerHTML = state.data.genres.map(g => `
+        <div class="flex items-center justify-between bg-slate-50 px-3 py-1.5 rounded-lg text-xs">
+          <input type="text" value="${escapeHtml(g)}" onchange="renameGenre('${escapeHtml(g)}', this.value)" class="bg-transparent font-medium border-b border-transparent focus:border-rose-400 focus:outline-none">
+          <button onclick="removeGenre('${escapeHtml(g)}')" class="text-slate-400 hover:text-rose-500 font-bold">&times;</button>
+        </div>
+      `).join('');
+
+      // 保管場所
+      const lContainer = document.getElementById('locationManageList');
+      lContainer.innerHTML = state.data.locations.map(l => `
+        <div class="flex items-center justify-between bg-slate-50 px-3 py-1.5 rounded-lg text-xs">
+          <input type="text" value="${escapeHtml(l)}" onchange="renameLocation('${escapeHtml(l)}', this.value)" class="bg-transparent font-medium border-b border-transparent focus:border-rose-400 focus:outline-none">
+          <button onclick="removeLocation('${escapeHtml(l)}')" class="text-slate-400 hover:text-rose-500 font-bold">&times;</button>
+        </div>
+      `).join('');
+    }
+
+    function handleAddGenre(e) {
+      e.preventDefault();
+      const input = document.getElementById('newGenreInput');
+      const val = input.value.trim();
+      if (val && !state.data.genres.includes(val)) {
+        state.data.genres.push(val);
+        saveData();
+        renderManageLists();
+        input.value = "";
+      }
+    }
+
+    function renameGenre(oldName, newName) {
+      newName = newName.trim();
+      if (!newName || oldName === newName) return;
+      const index = state.data.genres.indexOf(oldName);
+      if (index !== -1) {
+        state.data.genres[index] = newName;
+        // 既存アイテムも置き換え
+        state.data.items.forEach(i => { if (i.genre === oldName) i.genre = newName; });
+        saveData();
+        renderManageLists();
+      }
+    }
+
+    function removeGenre(g) {
+      if (state.data.genres.length <= 1) return alert("最低1つのジャンルが必要です");
+      state.data.genres = state.data.genres.filter(x => x !== g);
+      saveData();
+      renderManageLists();
+    }
+
+    function handleAddLocation(e) {
+      e.preventDefault();
+      const input = document.getElementById('newLocationInput');
+      const val = input.value.trim();
+      if (val && !state.data.locations.includes(val)) {
+        state.data.locations.push(val);
+        saveData();
+        renderManageLists();
+        input.value = "";
+      }
+    }
+
+    function renameLocation(oldName, newName) {
+      newName = newName.trim();
+      if (!newName || oldName === newName) return;
+      const index = state.data.locations.indexOf(oldName);
+      if (index !== -1) {
+        state.data.locations[index] = newName;
+        state.data.items.forEach(i => { if (i.location === oldName) i.location = newName; });
+        saveData();
+        renderManageLists();
+      }
+    }
+
+    function removeLocation(l) {
+      if (state.data.locations.length <= 1) return alert("最低1つの保管場所が必要です");
+      state.data.locations = state.data.locations.filter(x => x !== l);
+      saveData();
+      renderManageLists();
+    }
+
+    // --- 【重要修正】共有URLの組み立て ---
+    function copyShareLink() {
+      // ドメイン重複を防ぎ、常に正しく原点のURL＋?room=xxx を生成
+      const cleanUrl = window.location.origin + window.location.pathname + '?room=' + encodeURIComponent(state.roomId);
+      
+      // クリップボードへコピー
+      const tempInput = document.createElement('input');
+      tempInput.value = cleanUrl;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+
+      showToast("共有URLをコピーしました！");
+    }
+
+    // --- ユーティリティ ---
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2500);
+    }
+  </script>
+</body>
+</html>
+```
